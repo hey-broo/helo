@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration & OTP Verification</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #4CAF50;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .message {
+            text-align: center;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="{{ url_for('login') }}"><button>login </button></a>
+    </header>
+
+    <div class="container">
+        <h2>User Registration</h2>
+        <form id="registerForm" action="index">
+            <div class="form-group">
+                <label for="userid">User ID:</label>
+                <input type="text" id="userid" name="userid" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email/Phone:</label>
+                <input type="text" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+
+        <div id="otpSection" class="hidden">
+            <h2>OTP Verification</h2>
+            <form id="otpForm">
+                <div class="form-group">
+                    <label for="otp">Enter OTP:</label>
+                    <input type="text" id="otp" name="otp" required>
+                </div>
+                <button type="submit">Verify OTP</button>
+            </form>
+            <div id="message" class="message hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        let userData = {};
+
+        // Validate User ID
+        function validateUserID(userid) {
+            if (userid.includes(' ')) {
+                alert("User ID should not contain spaces.");
+                return false;
+            }
+            return true;
+        }
+
+        // Validate Email
+        function validateEmail(email) {
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+            if (!emailRegex.test(email)) {
+                alert("Please enter a valid Gmail address.");
+                return false;
+            }
+            return true;
+        }
+
+        // Validate Password
+        function validatePassword(password) {
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+            if (!passwordRegex.test(password)) {
+                alert("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
+                return false;
+            }
+            return true;
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            let formData = new FormData(this);
+            let userid = formData.get('userid');
+            let email = formData.get('email');
+            let password = formData.get('password');
+
+            // Validate inputs
+            if (!validateUserID(userid) || !validateEmail(email) || !validatePassword(password)) {
+                return;  // Stop form submission if validation fails
+            }
+
+            userData = Object.fromEntries(formData.entries());
+            
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                if (data.otp) {
+                    alert("Your OTP is: " + data.otp);
+                    document.getElementById('otpSection').classList.remove('hidden');
+                    this.reset();
+                } else {
+                    alert("Error: " + (data.error || "Something went wrong"));
+                }
+              });
+        });
+
+        document.getElementById('otpForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            let formData = new FormData(this);
+            formData.append('userid', userData.userid);
+            formData.append('email', userData.email);
+            formData.append('password', userData.password);
+
+            fetch('/otp', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+              .then(data => {
+                let messageDiv = document.getElementById('message');
+                messageDiv.textContent = data.message;
+                messageDiv.classList.remove('hidden', 'success', 'error');
+                messageDiv.classList.add(data.success ? 'success' : 'error');
+
+                // If OTP is verified successfully, redirect to welcome page
+                if (data.success) {
+                    setTimeout(() => {
+                        window.location.href = '/welcome';  // Redirect to the welcome page
+                    }, 2000);  // Wait 2 seconds before redirecting
+                }
+              });
+        });
+    </script>
+</body>
+</html>
